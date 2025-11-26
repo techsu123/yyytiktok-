@@ -3,19 +3,16 @@ import uuid
 import logging
 from pyrogram import Client, filters
 from pyrogram.types import Message
+from pyrogram.errors import UserNotParticipant
 from yt_dlp import YoutubeDL, DownloadError
 
 # ==========================================
 # CONFIGURATION
 # ==========================================
-# 1. Get these from https://my.telegram.org/apps
-API_ID = 38729067  # Replace with your Integer API ID
+API_ID = 38729067 
 API_HASH = "3c37feee078c641e6b9bab21a118fbb4" 
-
-# 2. Get this from @BotFather
+REQUIRED_CHANNEL = "@lazoxx"
 BOT_TOKEN = "5751521169:AAEzb-BXgFc6cpteurCgoCy6g2n0TeYi8Y8"
-
-# Directory for downloads
 DOWNLOAD_DIR = "downloads"
 
 # ==========================================
@@ -36,20 +33,31 @@ app = Client(
 # BOT LOGIC
 # ==========================================
 
-# Filter to capture messages containing TikTok links
-# We use a regex filter to ensure we only trigger on TikTok URLs
+
 tiktok_filter = filters.regex(r'https?://(?:www\.|m\.|vm\.|vt\.)?tiktok\.com/')
 
 @app.on_message(filters.private & tiktok_filter)
 async def tiktok_downloader(client: Client, message: Message):
-    
-    # Notify user
+    try:
+        await client.get_chat_member(REQUIRED_CHANNEL, message.from_user.id)
+    except UserNotParticipant:
+        join_url = f"https://t.me/{REQUIRED_CHANNEL.replace('@', '')}"
+        await message.reply_text(
+            f"🛑 **Access Denied!**\n\n"
+            f"You must be a **subscriber** of our channel to download videos.\n"
+            f"Please join: [Our Channel]({join_url})",
+            disable_web_page_preview=True,
+            quote=True
+         )
+        return
+    except Exception as e:
+        logger.error(f"Subscription check error: {e}")
+        await message.reply_text("❌ An error occurred during the subscription check. Make sure the bot is an **admin** in the channel.")
+        return
     status_msg = await message.reply_text("⏳ Processing... Downloading video.")
-    
-    # Create download directory
+
     os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-    
-    # Generate unique filename
+
     unique_id = str(uuid.uuid4())
     save_path_template = os.path.join(DOWNLOAD_DIR, f"{unique_id}.%(ext)s")
     final_file_path = None
