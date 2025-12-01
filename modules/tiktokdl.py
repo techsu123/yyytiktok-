@@ -1,4 +1,3 @@
-'''
 import os
 import uuid
 import asyncio
@@ -140,4 +139,3 @@ async def check_force_sub_callback(client, callback_query):
             
     except Exception as e:
         logger.error(f"Force sub callback error: {e}")
-        '''
