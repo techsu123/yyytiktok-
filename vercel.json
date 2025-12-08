@@ -4,14 +4,11 @@
     "api/*.py": {
       "runtime": "now-python@1.2.0"
     }
-  }
-}
-
-
+  },
   "routes": [
     {
       "src": "/api/webhook",
       "dest": "/api/webhook.py"
     }
   ]
-
+}
