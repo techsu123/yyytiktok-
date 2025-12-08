@@ -1,9 +1,10 @@
 import os
 from flask import Flask, request, jsonify
 import requests
+from config import Config
 
 app = Flask(__name__)
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # configured in Vercel env vars
+BOT_TOKEN = Config.BOT_TOKEN  # configured in Vercel env vars
 
 TELEGRAM_SEND_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
