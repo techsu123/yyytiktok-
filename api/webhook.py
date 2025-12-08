@@ -1,39 +1,34 @@
+import os
 from flask import Flask, request, jsonify
-
-# Note: You would typically use a library like python-telegram-bot or adapt pyrogram
-# to webhooks, as Pyrogram is not natively designed for this.
+import requests
 
 app = Flask(__name__)
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # configured in Vercel env vars
 
-# This is the endpoint Telegram sends updates to
-@app.route('/', methods=['POST'])
-def webhook_handler():
-    try:
-        # 1. Get the update data from Telegram's POST request body
-        update = request.get_json()
-        
-        # 2. Extract the message/link from the update
-        if 'message' in update and 'text' in update['message']:
-            message_text = update['message']['text']
-            chat_id = update['message']['chat']['id']
-            
-            # --- Your TikTok download logic goes here ---
-            # You must use a non-blocking way to download and send the file.
-            # You would likely need a separate worker or external storage.
-            
-            # For a basic response (required by Telegram):
-            # send_telegram_message(chat_id, "Received your link. Processing...")
-            
-            return jsonify({'status': 'ok'}), 200
-        
-        return jsonify({'status': 'ignored'}), 200
+TELEGRAM_SEND_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
-    except Exception as e:
-        # Log the error, but still return 200 to Telegram
-        print(f"Error handling update: {e}")
-        return jsonify({'status': 'error'}), 200
+@app.route("/api/webhook", methods=["POST"])
+def webhook():
+    if request.headers.get("content-type") != "application/json":
+        return jsonify({"ok": False, "reason": "invalid content-type"}), 400
 
-# Vercel runs this function as the entry point
-if __name__ == '__main__':
-    # This part is ignored on Vercel, but useful for local testing
-    app.run(debug=True)
+    update = request.get_json(force=True)
+
+    # Basic safety check
+    if not update:
+        return jsonify({"ok": False, "reason": "no body"}), 400
+
+    # Example: when a user sends a message, echo it back
+    message = update.get("message")
+    if message:
+        chat_id = message["chat"]["id"]
+        text = message.get("text", "")
+        reply_text = f"You said: {text}"
+
+        payload = {"chat_id": chat_id, "text": reply_text}
+        # send message back to user
+        resp = requests.post(TELEGRAM_SEND_URL, json=payload, timeout=10)
+
+    # Always respond 200 to Telegram quickly
+    return jsonify({"ok": True})
+
