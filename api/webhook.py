@@ -2,34 +2,51 @@ import os
 from flask import Flask, request, jsonify
 import requests
 from config import Config
+import logging
 
 app = Flask(__name__)
-BOT_TOKEN = Config.BOT_TOKEN  # configured in Vercel env vars
+
+# Basic logging to appear in Vercel function logs
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # set this in Vercel env vars
+if not BOT_TOKEN:
+    logger.warning("BOT_TOKEN is not set in environment variables.")
 
 TELEGRAM_SEND_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 
-@app.route("/api/webhook", methods=["POST"])
+@app.route("/api/webhook", methods=["POST", "GET"])
 def webhook():
-    if request.headers.get("content-type") != "application/json":
-        return jsonify({"ok": False, "reason": "invalid content-type"}), 400
+    # Allow GET for quick manual check
+    if request.method == "GET":
+        return jsonify({"ok": True, "message": "Webhook endpoint. POST updates here."})
 
-    update = request.get_json(force=True)
+    # POST -- handle Telegram update
+    try:
+        update = request.get_json(force=True)
+    except Exception as e:
+        logger.exception("Failed to parse JSON")
+        return jsonify({"ok": False, "error": "invalid json"}), 400
 
-    # Basic safety check
-    if not update:
-        return jsonify({"ok": False, "reason": "no body"}), 400
+    logger.info("Received update: %s", update)
 
-    # Example: when a user sends a message, echo it back
-    message = update.get("message")
+    # Example simple handler: echo text messages
+    message = update.get("message") or {}
+    chat_id = None
+    text = None
     if message:
-        chat_id = message["chat"]["id"]
+        chat_id = message.get("chat", {}).get("id")
         text = message.get("text", "")
-        reply_text = f"You said: {text}"
 
+    if chat_id and BOT_TOKEN:
+        reply_text = f"You said: {text or '<no text>'}"
         payload = {"chat_id": chat_id, "text": reply_text}
-        # send message back to user
-        resp = requests.post(TELEGRAM_SEND_URL, json=payload, timeout=10)
+        try:
+            r = requests.post(TELEGRAM_SEND_URL, json=payload, timeout=10)
+            logger.info("sendMessage response: %s", r.text)
+        except Exception:
+            logger.exception("Failed to call sendMessage")
 
-    # Always respond 200 to Telegram quickly
+    # Respond 200 quickly to Telegram
     return jsonify({"ok": True})
-
