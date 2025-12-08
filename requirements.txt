@@ -3,3 +3,4 @@ TgCrypto
 yt_dlp
 tqdm
 flask
+requests
