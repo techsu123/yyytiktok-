@@ -10,7 +10,7 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")  # set this in Vercel env vars
+BOT_TOKEN = Config.BOT_TOKEN  # set this in Vercel env vars
 if not BOT_TOKEN:
     logger.warning("BOT_TOKEN is not set in environment variables.")
 
