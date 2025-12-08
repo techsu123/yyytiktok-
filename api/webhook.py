@@ -1,35 +1,39 @@
 import os
-import json
 import requests
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")  # Set in Vercel env vars
+TELEGRAM_SEND_URL = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+
+# Import your app.py bot logic
+import app  # your existing app.py functions, if any
 
 @app.route("/api/webhook", methods=["POST", "GET"])
 def webhook():
-    # For quick browser test
+    # GET request just to test the endpoint
     if request.method == "GET":
-        return jsonify({"status": "webhook is running"}), 200
+        return jsonify({"status": "Webhook endpoint running"}), 200
 
-    update = request.get_json()
+    # Handle incoming Telegram updates
+    update = request.get_json(force=True)
     print("Incoming Update:", update)
 
-    if not update:
-        return jsonify({"ok": False}), 200
+    # Simple example: echo text messages
+    message = update.get("message")
+    if message:
+        chat_id = message["chat"]["id"]
+        text = message.get("text", "")
+        reply_text = f"You said: {text}"
 
-    # Handle message
-    if "message" in update:
-        chat_id = update["message"]["chat"]["id"]
-        text = update["message"].get("text", "")
+        try:
+            requests.post(
+                TELEGRAM_SEND_URL,
+                json={"chat_id": chat_id, "text": reply_text},
+                timeout=10
+            )
+        except Exception as e:
+            print("Failed to send message:", e)
 
-        # Reply back
-        reply = f"You said: {text}"
-
-        requests.post(
-            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-            json={"chat_id": chat_id, "text": reply}
-        )
-
-    return jsonify({"ok": True}), 200
+    return jsonify({"ok": True})
